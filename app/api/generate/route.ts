@@ -58,8 +58,9 @@ export async function POST(req: NextRequest) {
 
         // 2) Call Google Gemini Images API with retries and a longer timeout
         // Default model: imagegeneration (Gemini Images API)
-        const modelId = (payload.model && typeof payload.model === "string" && payload.model.trim()) || "imagegeneration";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generate?key=${encodeURIComponent(process.env.GOOGLE_API_KEY!)}`;
+        const modelId = (payload.model && typeof payload.model === "string" && payload.model.trim()) || "gemini-2.5-flash-image";
+        // Gemini Images API endpoint (generateContent)
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(process.env.GOOGLE_API_KEY!)}`;
 		async function fetchWithTimeout(url: string, options: RequestInit & { timeoutMs: number }) {
 			const controller = new AbortController();
 			const timer = setTimeout(() => controller.abort(), options.timeoutMs);
@@ -75,20 +76,31 @@ export async function POST(req: NextRequest) {
 			for (let i = 0; i < attempts; i++) {
 				try {
                     // Map our payload to Gemini Images API schema
-                    const body = {
-                        prompt: { text: payload.prompt },
-                        ...(payload.negative_prompt ? { negativePrompt: { text: String(payload.negative_prompt) } } : {}),
-                        imageGenerationConfig: {
-                            numberOfImages: 1,
-                            width: payload.width ?? 512,
-                            height: payload.height ?? 512,
-                            ...(payload.seed !== undefined ? { seed: String(payload.seed) } : {}),
-                            ...(payload.cfg_scale !== undefined ? { guidanceScale: Number(payload.cfg_scale) } : {}),
-                            // sampler/steps may or may not be supported; include if provided
-                            ...(payload.sampler ? { sampler: String(payload.sampler) } : {}),
-                            ...(payload.steps ? { steps: Number(payload.steps) } : {}),
+                    // Map width/height to aspect ratio (fallback to 1:1)
+                    let aspectRatio: string | undefined;
+                    if (payload.width && payload.height) {
+                        if (payload.width === payload.height) aspectRatio = "1:1";
+                        else if (payload.width > payload.height) aspectRatio = "16:9";
+                        else aspectRatio = "9:16";
+                    }
+
+                    const parts: any[] = [{ text: payload.prompt }];
+                    // Negative prompt is not officially supported; omit or include as plain text hint
+                    if (payload.negative_prompt) {
+                        parts.push({ text: `Avoid: ${String(payload.negative_prompt)}` });
+                    }
+
+                    const body: Record<string, unknown> = {
+                        contents: [
+                            {
+                                parts,
+                            },
+                        ],
+                        generationConfig: {
+                            responseModalities: ["IMAGE"],
+                            ...(aspectRatio ? { imageConfig: { aspectRatio } } : {}),
                         },
-                    } as Record<string, unknown>;
+                    };
 
                     return await fetchWithTimeout(apiUrl, {
                         method: "POST",
@@ -138,13 +150,19 @@ export async function POST(req: NextRequest) {
 
         const data = await upstream.json();
         let imageUrl: string | undefined;
-        // Google Images API typical response
-        // {
-        //   images: [{ image: { bytesBase64Encoded: "..." } }]
-        // }
-        const base64 = data?.images?.[0]?.image?.bytesBase64Encoded || data?.images?.[0]?.bytesBase64Encoded;
-        if (typeof base64 === "string" && base64.length > 0) {
-            imageUrl = `data:image/png;base64,${base64}`;
+        // Parse candidates->content->parts for inlineData/inline_data
+        const candidates = data?.candidates;
+        if (Array.isArray(candidates) && candidates.length > 0) {
+            const parts = candidates[0]?.content?.parts || [];
+            for (const p of parts) {
+                const inlineCamel = p?.inlineData?.data;
+                const inlineSnake = p?.inline_data?.data;
+                const base64 = inlineCamel || inlineSnake;
+                if (typeof base64 === "string" && base64.length > 0) {
+                    imageUrl = `data:image/png;base64,${base64}`;
+                    break;
+                }
+            }
         }
 
 		if (!imageUrl) {

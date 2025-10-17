@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "Nano Banana Image Generator",
-	description: "Generate AI images with Nano Banana and log prompts to Supabase",
+	title: "Design Studio",
+	description: "Create beautiful AI designs with a polished, feminine interface",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
