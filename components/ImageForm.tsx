@@ -87,7 +87,10 @@ Showcase shape, color, finish, and design beautifully.`;
         };
 
         try {
-			const res = await fetch("/api/generate", {
+            // Persist last payload for history UI
+            try { sessionStorage.setItem("nb_last_payload", JSON.stringify(payload)); } catch {}
+
+            const res = await fetch("/api/generate", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(payload),
@@ -182,17 +185,17 @@ Showcase shape, color, finish, and design beautifully.`;
             {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
             <div className="flex items-center justify-between gap-3">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={nailMode}
-                        onChange={(e) => setNailMode(e.target.checked)}
-                        aria-label="Nail Design Mode"
-                    />
+                <button
+                    type="button"
+                    className="flex items-center gap-3 cursor-pointer select-none"
+                    aria-label="Nail Design Mode"
+                    aria-pressed={nailMode}
+                    onClick={() => setNailMode((v) => !v)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setNailMode((v) => !v); } }}
+                    disabled={loading}
+                >
                     <span
                         className={`relative h-6 w-11 rounded-full transition-colors ${nailMode ? "bg-rose-500" : "bg-rose-200"}`}
-                        onClick={() => setNailMode(!nailMode)}
                         role="switch"
                         aria-checked={nailMode}
                     >
@@ -201,8 +204,9 @@ Showcase shape, color, finish, and design beautifully.`;
                         />
                     </span>
                     <span className="text-rose-700 text-sm">✨ Nail Design Mode (recommended)</span>
-                </label>
-                {nailMode ? <span className="text-xs text-rose-500">Base prompt applied</span> : null}
+                    <span className="text-xs text-rose-500">{nailMode ? "On" : "Off"}</span>
+                </button>
+                {nailMode ? <span className="text-xs text-rose-500">Base prompt applied</span> : <span className="text-xs text-rose-400">Base prompt off</span>}
             </div>
 
             <Button type="submit" className="w-full btn-primary rounded-xl glow mt-2" disabled={loading}>
