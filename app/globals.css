@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	tab-size: 4;
+}
+
+html, body, :root {
+	height: 100%;
+}
+
+body {
+	@apply bg-background text-foreground antialiased;
+}
+
+.container-centered {
+	@apply min-h-screen flex items-center justify-center p-4;
+}
+
+.card {
+	@apply bg-white border border-border rounded-lg shadow-sm;
+}
+
+.btn {
+	@apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+}
+
+.btn-primary {
+	@apply bg-primary text-primary-foreground hover:opacity-95;
+}
+
+.input {
+	@apply flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+.label {
+	@apply text-sm font-medium text-gray-700;
+}
+
+.select {
+	@apply input;
+}
+
+.textarea {
+	@apply w-full min-h-[120px] rounded-md border border-input bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+
